@@ -48,15 +48,7 @@ export async function POST(req: Request) {
         }),
     });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to create project");
-
-    return NextResponse.json({
-        ok: true,
-        projectRef: data.ref || data.id,
-           });
-        }
-
+    
 
     
             const data = await res.json();
