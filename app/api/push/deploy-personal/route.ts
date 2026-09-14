@@ -1,52 +1,136 @@
 export const runtime = "edge";
 
 import { NextResponse } from "next/server";
+import JSZip from "jszip";
 
 const SUPABASE_API_BASE = "https://api.supabase.com/v1";
 
 export async function POST(req: Request) {
     try {
-        const { projectRef, token, gatewayCode, generateCode, resultCode, bridgeCode, screenChatCode, schemaSql } = await req.json();
+        const {
+            projectRef,
+            token,
+            gatewayCode,
+            generateCode,
+            resultCode,
+            bridgeCode,
+            screenChatCode,
+            schemaSql,
+        } = await req.json();
+
         if (!token || !projectRef) {
-            return NextResponse.json({ ok: false, error: "Missing parameters" }, { status: 400 });
+            return NextResponse.json(
+                { ok: false, error: "Missing parameters" },
+                { status: 400 }
+            );
         }
 
-        const headers = {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
-        };
+        // 使用 Supabase 新版 Edge Function Deploy API
+        const deployFunction = async (
+            slug: string,
+            name: string,
+            code: string
+        ) => {
+            if (!code) {
+                throw new Error(`Missing code for ${slug}`);
+            }
 
-        const deployFunction = async (slug: string, name: string, code: string) => {
-            const checkRes = await fetch(`${SUPABASE_API_BASE}/projects/${projectRef}/functions/${slug}`, { headers });
-            const method = checkRes.ok ? "PATCH" : "POST";
-            const url = checkRes.ok 
-                ? `${SUPABASE_API_BASE}/projects/${projectRef}/functions/${slug}`
-                : `${SUPABASE_API_BASE}/projects/${projectRef}/functions`;
+            // 将函数代码打包成 zip
+            const zip = new JSZip();
+            zip.file("index.mjs", code);
 
-            const res = await fetch(url, {
-                method,
-                headers,
-                body: JSON.stringify({ slug, name, code, verify_jwt: false }),
+            const zipData = await zip.generateAsync({
+                type: "uint8array",
             });
+
+            const form = new FormData();
+
+            form.append(
+                "metadata",
+                JSON.stringify({
+                    name,
+                    entrypoint_path: "index.mjs",
+                    verify_jwt: false,
+                })
+            );
+
+            form.append(
+                "file",
+                new Blob([zipData], {
+                    type: "application/zip",
+                }),
+                "function.zip"
+            );
+
+            const res = await fetch(
+                `${SUPABASE_API_BASE}/projects/${projectRef}/functions/deploy?slug=${slug}`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: form,
+                }
+            );
+
+            const data = await res.json();
+
             if (!res.ok) {
-                const data = await res.json();
-                throw new Error(`Failed to deploy ${slug}: ${data.message || "Unknown error"}`);
+                throw new Error(
+                    `Failed to deploy ${slug}: ${
+                        data.message ||
+                        data.error ||
+                        JSON.stringify(data) ||
+                        "Unknown error"
+                    }`
+                );
             }
         };
 
-        // 部署推送相关的一系列函数
-        await deployFunction("ai-phone-push", "离线推送网关", gatewayCode);
-        await deployFunction("push-generate", "推送内容生成", generateCode);
-        await deployFunction("push-shortcut-result", "快捷动作回调", resultCode);
-        await deployFunction("push-bridge", "推送桥接", bridgeCode);
-        await deployFunction("screen-chat", "屏幕速聊", screenChatCode);
+        // 部署推送相关的 5 个函数
+        await deployFunction(
+            "ai-phone-push",
+            "离线推送网关",
+            gatewayCode
+        );
 
-        // 注意：SQL 执行在 Edge API 中通常需要 service_role key 直接连数据库，
-        // Management API 不直接支持运行 SQL。这里我们假设用户已经通过 SQL Editor 运行了 schema.sql，
-        // 或者我们返回成功让前端继续健康检查。
-        
-        return NextResponse.json({ ok: true });
+        await deployFunction(
+            "push-generate",
+            "推送内容生成",
+            generateCode
+        );
+
+        await deployFunction(
+            "push-shortcut-result",
+            "快捷动作回调",
+            resultCode
+        );
+
+        await deployFunction(
+            "push-bridge",
+            "推送桥接",
+            bridgeCode
+        );
+
+        await deployFunction(
+            "screen-chat",
+            "屏幕速聊",
+            screenChatCode
+        );
+
+        // schemaSql 暂时不在这里执行
+        // 后续如果健康检查提示数据库表不存在，再处理 SQL 部署。
+
+        return NextResponse.json({
+            ok: true,
+        });
     } catch (err: any) {
-        return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+        return NextResponse.json(
+            {
+                ok: false,
+                error: err.message,
+            },
+            { status: 500 }
+        );
     }
 }
