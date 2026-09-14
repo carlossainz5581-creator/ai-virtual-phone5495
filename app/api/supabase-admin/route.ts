@@ -26,24 +26,24 @@ export async function POST(req: Request) {
             const data = await res.json();
             return NextResponse.json({ ok: true, status: data.status });
         }
+        
+        if (action === "create_project") {
+            const { organizationSlug, regionCode } = params;
 
-if (action === "create_project") {
-    const { organizationSlug, regionCode } = params;
+            const dbPass =
+                crypto.randomUUID().replace(/-/g, "") +
+                crypto.randomUUID().replace(/-/g, "");
 
-    const dbPass =
-        crypto.randomUUID().replace(/-/g, "") +
-        crypto.randomUUID().replace(/-/g, "");
-
-    const res = await fetch(`${SUPABASE_API_BASE}/projects`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-            name: "AI Phone Personal Cloud",
-            organization_slug: organizationSlug,
-            db_pass: dbPass,
-            region_selection: {
-                type: "smartGroup",
-                code: regionCode || "americas",
+            const res = await fetch(`${SUPABASE_API_BASE}/projects`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                    name: "AI Phone Personal Cloud",
+                    organization_slug: organizationSlug,
+                    db_pass: dbPass,
+                    region_selection: {
+                                 type: "smartGroup",
+                                 code: regionCode || "americas",
             },
         }),
     });
@@ -54,8 +54,10 @@ if (action === "create_project") {
     return NextResponse.json({
         ok: true,
         projectRef: data.ref || data.id,
-    });
-}
+           });
+        }
+
+
     
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || "Failed to create project");
