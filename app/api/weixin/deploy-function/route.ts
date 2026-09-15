@@ -15,6 +15,11 @@ export async function POST(req: Request) {
                 { status: 400 }
             );
         }
+        const headers = {
+    Authorization: `Bearer ${token}`,
+};
+
+const slug = "weixin-assistant";
 
      
 
