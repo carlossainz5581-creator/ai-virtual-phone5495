@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 
         // 把函数代码打包成 zip
         const zip = new JSZip();
-        zip.file("index.mjs", code);
+        zip.file("source/index.mjs", code);
 
         const zipData = await zip.generateAsync({
             type: "uint8array",
