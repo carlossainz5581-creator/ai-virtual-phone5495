@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 
         // 把函数代码打包成 zip
         const zipData = zipSync({
-    "source/index.mjs": strToU8(code),
+    "index.mjs": strToU8(code),
 });
         // Supabase 新版函数部署 API
         const form = new FormData();
