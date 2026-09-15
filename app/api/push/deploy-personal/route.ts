@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
             // 将函数代码打包成 zip
             const zipData = zipSync({
-    "source/index.mjs": strToU8(code),
+    "index.mjs": strToU8(code),
 });
 
             const form = new FormData();
