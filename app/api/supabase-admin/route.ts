@@ -100,11 +100,44 @@ export async function POST(req: Request) {
         }
 
         if (action === "run_sql") {
-            const { projectRef, sql } = params;
-            // Note: Management API does not have a direct "run_sql" for user DBs via Access Token.
-            // In the original design, this likely proxied to a specific endpoint or used a different method.
-            // For now, we stub a success if it's just metadata tables, or provide instructions.
-            return NextResponse.json({ ok: true });
+    const { projectRef, sql } = params;
+
+    if (!projectRef || !sql) {
+        return NextResponse.json(
+            {
+                ok: false,
+                error: "Missing projectRef or sql",
+            },
+            { status: 400 }
+        );
+    }
+
+    const res = await fetch(
+        `${SUPABASE_API_BASE}/projects/${projectRef}/database/query`,
+        {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+                query: sql,
+            }),
+        }
+    );
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+        throw new Error(
+            data.message ||
+            data.error ||
+            JSON.stringify(data) ||
+            `Failed to execute SQL (HTTP ${res.status})`
+        );
+    }
+
+    return NextResponse.json({
+        ok: true,
+        data,
+    });
         }
 
         if (action === "assert_dedicated_project") {
