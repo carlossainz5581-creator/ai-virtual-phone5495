@@ -19,6 +19,7 @@
     "build:glass-icons": "node scripts/build-glass-icons.mjs"
   },
   "dependencies": {
+    "fflate": "^0.8.2",
     "@gltf-transform/functions": "^4.4.1",
     "@heroicons/react": "^2.2.0",
     "@mdi/js": "^7.4.47",
