@@ -23,10 +23,19 @@ export async function POST(req: Request) {
         if (action === "project_status") {
     const { projectRef } = params;
 
-    const res = await fetch(
-        `${SUPABASE_API_BASE}/projects/${projectRef}/health`,
-        { headers }
+    const url = new URL(
+        `${SUPABASE_API_BASE}/projects/${projectRef}/health`
     );
+
+    url.searchParams.append("services", "auth");
+    url.searchParams.append("services", "rest");
+    url.searchParams.append("services", "db");
+    url.searchParams.append("services", "storage");
+    url.searchParams.append("services", "realtime");
+
+    const res = await fetch(url.toString(), {
+        headers,
+    });
 
     const data = await res.json();
 
@@ -39,9 +48,7 @@ export async function POST(req: Request) {
         );
     }
 
-    const services = Array.isArray(data)
-        ? data
-        : data.services || [];
+    const services = Array.isArray(data) ? data : [];
 
     const unhealthy = services.find(
         (service: any) => service.status !== "ACTIVE_HEALTHY"
@@ -49,7 +56,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
         ok: true,
-        status: unhealthy ? unhealthy.status : "ACTIVE_HEALTHY",
+        status: unhealthy
+            ? unhealthy.status
+            : "ACTIVE_HEALTHY",
     });
         }
         
