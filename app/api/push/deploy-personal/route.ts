@@ -1,7 +1,6 @@
 export const runtime = "edge";
 
 import { NextResponse } from "next/server";
-import { zipSync, strToU8 } from "fflate";
 
 const SUPABASE_API_BASE = "https://api.supabase.com/v1";
 
@@ -25,7 +24,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // 使用 Supabase 新版 Edge Function Deploy API
         const deployFunction = async (
             slug: string,
             name: string,
@@ -34,11 +32,6 @@ export async function POST(req: Request) {
             if (!code) {
                 throw new Error(`Missing code for ${slug}`);
             }
-
-            // 将函数代码打包成 zip
-            const zipData = zipSync({
-    "index.mjs": strToU8(code),
-});
 
             const form = new FormData();
 
@@ -51,12 +44,13 @@ export async function POST(req: Request) {
                 })
             );
 
+            // 和微信助手一样：直接上传 index.mjs
             form.append(
                 "file",
-                new Blob([zipData], {
-                    type: "application/zip",
+                new Blob([code], {
+                    type: "application/javascript",
                 }),
-                "function.zip"
+                "index.mjs"
             );
 
             const res = await fetch(
@@ -84,39 +78,43 @@ export async function POST(req: Request) {
             }
         };
 
-        // 部署推送相关的 5 个函数
+        // 1. 离线推送网关
         await deployFunction(
             "ai-phone-push",
             "离线推送网关",
             gatewayCode
         );
 
+        // 2. 推送内容生成
         await deployFunction(
             "push-generate",
             "推送内容生成",
             generateCode
         );
 
+        // 3. 快捷动作回调
         await deployFunction(
             "push-shortcut-result",
             "快捷动作回调",
             resultCode
         );
 
+        // 4. 推送桥接
         await deployFunction(
             "push-bridge",
             "推送桥接",
             bridgeCode
         );
 
+        // 5. 屏幕速聊
         await deployFunction(
             "screen-chat",
             "屏幕速聊",
             screenChatCode
         );
 
-        // schemaSql 暂时不在这里执行
-        // 后续如果健康检查提示数据库表不存在，再处理 SQL 部署。
+        // schemaSql 暂时不执行
+        void schemaSql;
 
         return NextResponse.json({
             ok: true,
@@ -125,7 +123,7 @@ export async function POST(req: Request) {
         return NextResponse.json(
             {
                 ok: false,
-                error: err.message,
+                error: err?.message || String(err),
             },
             { status: 500 }
         );
