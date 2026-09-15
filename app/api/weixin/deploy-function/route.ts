@@ -15,19 +15,14 @@ export async function POST(req: Request) {
                 { status: 400 }
             );
         }
+
         const headers = {
-    Authorization: `Bearer ${token}`,
-};
+            Authorization: `Bearer ${token}`,
+        };
 
-const slug = "weixin-assistant";
+        const slug = "weixin-assistant";
 
-     
-
-        /*
-         * 关键修复：
-         * 旧版本函数可能保存了 source/index.mjs 作为 entrypoint。
-         * 先删除旧函数，再用新版 Deploy API 重新创建。
-         */
+        // 先删除旧函数，彻底清掉旧的 source/index.mjs 配置
         const deleteRes = await fetch(
             `${SUPABASE_API_BASE}/projects/${ref}/functions/${slug}`,
             {
@@ -36,7 +31,6 @@ const slug = "weixin-assistant";
             }
         );
 
-        // 404 = 原本没有这个函数，可以直接创建
         if (!deleteRes.ok && deleteRes.status !== 404) {
             const deleteData = await deleteRes.json().catch(() => ({}));
 
@@ -48,13 +42,9 @@ const slug = "weixin-assistant";
             );
         }
 
-        /*
-         * 新函数只有一个入口文件：
-         *
-         * index.mjs
-         */
+        // ZIP 内部明确使用 source/index.mjs
         const zipData = zipSync({
-            "index.mjs": strToU8(code),
+            "source/index.mjs": strToU8(code),
         });
 
         const form = new FormData();
@@ -76,9 +66,6 @@ const slug = "weixin-assistant";
             "function.zip"
         );
 
-        /*
-         * Supabase 新版 Edge Function Deploy API
-         */
         const deployRes = await fetch(
             `${SUPABASE_API_BASE}/projects/${ref}/functions/deploy?slug=${slug}`,
             {
