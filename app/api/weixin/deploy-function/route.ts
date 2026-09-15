@@ -1,7 +1,7 @@
 export const runtime = "edge";
 
 import { NextResponse } from "next/server";
-
+import { zipSync, strToU8 } from "fflate";
 
 const SUPABASE_API_BASE = "https://api.supabase.com/v1";
 
@@ -19,13 +19,9 @@ export async function POST(req: Request) {
         const slug = "weixin-assistant";
 
         // 把函数代码打包成 zip
-        const zip = new JSZip();
-        zip.file("source/index.mjs", code);
-
-        const zipData = await zip.generateAsync({
-            type: "uint8array",
-        });
-
+        const zipData = zipSync({
+    "source/index.mjs": strToU8(code),
+});
         // Supabase 新版函数部署 API
         const form = new FormData();
 
