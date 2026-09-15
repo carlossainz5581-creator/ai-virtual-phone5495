@@ -107,6 +107,40 @@ export async function POST(req: Request) {
             "屏幕速聊",
             screenChatCode
         );
+                // 初始化离线推送数据库
+        if (!schemaSql) {
+            throw new Error("Missing schemaSql");
+        }
+
+        const sqlRes = await fetch(
+            `${SUPABASE_API_BASE}/projects/${projectRef}/database/query`,
+            {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    query: schemaSql.replace(
+                        /__PROJECT_REF__/g,
+                        projectRef
+                    ),
+                }),
+            }
+        );
+
+        const sqlData = await sqlRes.json().catch(() => ({}));
+
+        if (!sqlRes.ok) {
+            throw new Error(
+                `Failed to initialize push database: ${
+                    sqlData.message ||
+                    sqlData.error ||
+                    JSON.stringify(sqlData) ||
+                    `HTTP ${sqlRes.status}`
+                }`
+            );
+        }
 
         void schemaSql;
 
