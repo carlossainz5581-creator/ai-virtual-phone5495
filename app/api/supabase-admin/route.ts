@@ -21,10 +21,36 @@ export async function POST(req: Request) {
         }
 
         if (action === "project_status") {
-            const { projectRef } = params;
-            const res = await fetch(`${SUPABASE_API_BASE}/projects/${projectRef}`, { headers });
-            const data = await res.json();
-            return NextResponse.json({ ok: true, status: data.status });
+    const { projectRef } = params;
+
+    const res = await fetch(
+        `${SUPABASE_API_BASE}/projects/${projectRef}/health`,
+        { headers }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(
+            data.message ||
+            data.error ||
+            JSON.stringify(data) ||
+            "Failed to check project health"
+        );
+    }
+
+    const services = Array.isArray(data)
+        ? data
+        : data.services || [];
+
+    const unhealthy = services.find(
+        (service: any) => service.status !== "ACTIVE_HEALTHY"
+    );
+
+    return NextResponse.json({
+        ok: true,
+        status: unhealthy ? unhealthy.status : "ACTIVE_HEALTHY",
+    });
         }
         
         if (action === "create_project") {
